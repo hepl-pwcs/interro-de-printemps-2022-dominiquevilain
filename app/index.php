@@ -4,6 +4,20 @@ use JetBrains\PhpStorm\ArrayShape;
 
 session_start();
 
+try {
+    global $pdo;
+    $pdo = new PDO(
+        'mysql:host=database;port=3306;dbname=blog', 'mysql',
+        'mysql',
+        [
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        ]
+    );
+} catch (PDOException $e) {
+    echo $e->getMessage();
+    exit;
+}
+
 // Front Controller
 
 const START_PAGE = 1;
@@ -151,12 +165,25 @@ function has_validation_errors(): bool
     if (mb_strlen($_POST['post-body']) < 100 || mb_strlen($_POST['post-body']) > 1000) {
         $_SESSION['errors']['post-body'] = 'Le texte doit être avoir une taille comprise entre 100 et 1000 caractères';
     }
-    $categories = get_categories();
-    if (!in_array($_POST['post-category'], array_keys($categories))) {
+    if (!category_exists($_POST['post-category'])) {
         $_SESSION['errors']['post-category'] = 'La catégorie doit faire partie des catégories existantes';
     }
     $_SESSION['old'] = $_POST;
     return (bool) count($_SESSION['errors']);
+}
+
+function category_exists(string $id): bool
+{
+    global $pdo;
+    $sql = <<<SQL
+        SELECT count(id)
+        FROM categories
+        WHERE id = :id
+    SQL;
+
+    $statement = $pdo->prepare($sql);
+    $statement->execute([':id' => $id]);
+    return (bool) $statement->fetchColumn();
 }
 
 // Models
@@ -195,18 +222,25 @@ function get_all_posts(): array
 
 function get_categories(): array
 {
-    $categories = [];
-    $posts = get_all_posts();
+    global $pdo;
 
-    foreach ($posts as $post) {
-        if (!in_array($post->category, array_keys($categories))) {
-            $categories[$post->category] = 1;
-        } else {
-            $categories[$post->category] += 1;
-        }
-    }
+    $sql = <<< SQL
+        SELECT 
+            c.id        as category_id,
+            c.slug      as category_slug,
+            c.name      as category_name,
+            COUNT(p.id) as posts_count
+        FROM categories c
+        JOIN category_post cp on c.id = cp.category_id
+        JOIN posts p on cp.post_id = p.id
+        GROUP BY c.slug, c.id
+        ORDER BY c.slug;
+    SQL;
 
-    return $categories;
+    $statement = $pdo->prepare($sql);
+    $statement->execute();
+
+    return $statement->fetchAll();
 }
 
 function get_authors(): array

@@ -76,10 +76,10 @@
                                 <select name="post-category"
                                         id="post-category"
                                         class="w-full rounded-md<?= isset($_SESSION['errors']['post-category']) ? ' border-red-600  accent-red-600' : ' border-gray-300' ?> shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                                    <?php foreach (array_keys($view['data']['categories']) as $category): ?>
-                                        <option value="<?= $category ?>"
-                                            <?= (isset($_SESSION['old']['post-category']) && $category === $_SESSION['old']['post-category']) ? 'selected' : '' ?>
-                                        ><?= ucwords($category) ?></option>
+                                    <?php foreach ($view['data']['categories'] as $category): ?>
+                                        <option value="<?= $category->category_id ?>"
+                                            <?= (isset($_SESSION['old']['post-category']) && $category->category_id === $_SESSION['old']['post-category']) ? 'selected' : '' ?>
+                                        ><?= ucwords($category->category_name) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                                 <input type="hidden"
